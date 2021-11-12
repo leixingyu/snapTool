@@ -4,18 +4,17 @@ import os
 import maya.cmds as cmds
 import maya.OpenMaya as om
 
-from utility.Qt import QtCore, QtGui, QtWidgets
-from utility.Qt import _loadUi
-from utility import setup
+from Qt import QtCore, QtGui, QtWidgets
+from Qt import _loadUi
 
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
-UI_PATH = r'snap.ui'
-PNG_PATH = r'snap.png'
+UI_PATH = r'ui/snap.ui'
+PNG_PATH = r'ui/snap.png'
 
 
 class SnapWindow(QtWidgets.QMainWindow):
-    def __init__(self, parent=setup.get_maya_main_window()):
-        super(SnapWindow, self).__init__(parent)
+    def __init__(self):
+        super(SnapWindow, self).__init__()
         _loadUi(os.path.join(CURRENT_PATH, UI_PATH), self)
 
         # set flag
@@ -112,7 +111,6 @@ class SnapWindow(QtWidgets.QMainWindow):
                 status = 1
             except:
                 status = -1
-
         # update status
         SnapWindow.update_jnt_status(object, status)
 
@@ -218,7 +216,6 @@ def show():
 
 
 def get_target_transform(jnt):
-
     return [
         jnt,
         [round(attr, 2) for attr in cmds.xform(jnt, ws=1, q=1, t=1)],
@@ -228,7 +225,6 @@ def get_target_transform(jnt):
 
 def snap_ik_to_fk(ik_handle, pole_vector, root_pos, mid_pos, top_pos, top_rot):
     """ Snap IK controls based on FK joint"""
-
     # build vectors
     fk_root_vec = om.MVector(root_pos[0], root_pos[1], root_pos[2])
     fk_mid_vec = om.MVector(mid_pos[0], mid_pos[1], mid_pos[2])
@@ -239,7 +235,6 @@ def snap_ik_to_fk(ik_handle, pole_vector, root_pos, mid_pos, top_pos, top_rot):
     pole_pos = fk_mid_vec + pole_dir
 
     # get ik ctrl transform
-
     pv_ctrl_pos = cmds.xform(pole_vector, ws=1, q=1, sp=1)
 
     # move ik ctrls
@@ -257,7 +252,6 @@ def snap_ik_to_fk(ik_handle, pole_vector, root_pos, mid_pos, top_pos, top_rot):
 
 def snap_fk_to_ik(fk_ctrls, root_rot, mid_rot, top_rot):
     """ Snap FK joint to IK joint"""
-
     cmds.xform(fk_ctrls[0], ro=root_rot, ws=1)
     cmds.xform(fk_ctrls[1], ro=mid_rot, ws=1)
     cmds.xform(fk_ctrls[2], ro=top_rot, ws=1)
