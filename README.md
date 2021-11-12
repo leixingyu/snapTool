@@ -1,7 +1,7 @@
 ## Snap Tool
 
 An animation tool that allows you to snap or match IK controller
-to FK controller and vice versa. 
+to FK controller and vice versa. [Full Demo](https://youtu.be/t8vuaqPDf0g)
 
 ### Launch
 
