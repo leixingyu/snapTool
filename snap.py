@@ -7,6 +7,7 @@ import maya.OpenMaya as om
 from Qt import QtCore, QtGui, QtWidgets
 from Qt import _loadUi
 
+
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 UI_PATH = r'ui/snap.ui'
 PNG_PATH = r'ui/snap.png'
@@ -14,6 +15,9 @@ PNG_PATH = r'ui/snap.png'
 
 class SnapWindow(QtWidgets.QMainWindow):
     def __init__(self):
+        """
+        Initialization
+        """
         super(SnapWindow, self).__init__()
         _loadUi(os.path.join(CURRENT_PATH, UI_PATH), self)
 
@@ -25,7 +29,7 @@ class SnapWindow(QtWidgets.QMainWindow):
         self.ui_mid_Label.installEventFilter(self)
         self.ui_top_Label.installEventFilter(self)
 
-        # initialize class attribute
+        # initialize instance attribute
         self._root_jnt = list()
         self._mid_jnt = list()
         self._top_jnt = list()
@@ -38,28 +42,34 @@ class SnapWindow(QtWidgets.QMainWindow):
         # initialize methods
         self.connect_signals()
 
-    def eventFilter(self, object, event):
+    def eventFilter(self, widget, event):
+        """
+        Override: define mouse hover, click behavior on certain ui elements
+        """
         # hover effect
-        if event.type() == QtCore.QEvent.Enter:
-            SnapWindow.update_jnt_highlight(object, 1)
-        elif event.type() == QtCore.QEvent.Leave:
-            SnapWindow.update_jnt_highlight(object, 0)
+        if event.dtype() == QtCore.QEvent.Enter:
+            SnapWindow.update_jnt_highlight(widget, 1)
+        elif event.dtype() == QtCore.QEvent.Leave:
+            SnapWindow.update_jnt_highlight(widget, 0)
 
         # mouse click effect
-        if event.type() == QtCore.QEvent.MouseButtonPress:
+        if event.dtype() == QtCore.QEvent.MouseButtonPress:
             if event.button() == QtCore.Qt.LeftButton:
-                self.open_menu(object)
+                self.open_menu(widget)
             elif event.button() == QtCore.Qt.RightButton:
                 print("Right Button Clicked")
 
         return False
 
-    def open_menu(self, object, target=None):
-        if object is self.ui_root_Label:
+    def open_menu(self, widget, target=None):
+        """
+        Create context menu on certain ui elements
+        """
+        if widget is self.ui_root_Label:
             target = self._root_jnt
-        elif object is self.ui_mid_Label:
+        elif widget is self.ui_mid_Label:
             target = self._mid_jnt
-        elif object is self.ui_top_Label:
+        elif widget is self.ui_top_Label:
             target = self._top_jnt
 
         menu = QtWidgets.QMenu()
@@ -72,12 +82,15 @@ class SnapWindow(QtWidgets.QMainWindow):
 
         action = menu.addAction('Assign selected')
         action.triggered.connect(
-            lambda: self.update_jnt(object, target))
+            lambda: self.update_jnt(widget, target))
 
         cursor = QtGui.QCursor()
         menu.exec_(cursor.pos())
 
     def connect_signals(self):
+        """
+        Connect signals and slots
+        """
         self.ui_snap_Btn.clicked.connect(lambda: self.snap())
         self.ui_clear_Btn.clicked.connect(lambda: self.clear())
 
@@ -103,7 +116,16 @@ class SnapWindow(QtWidgets.QMainWindow):
                 lambda _='', l=line_edits[index]: SnapWindow.set_selected(l)
             )
 
-    def update_jnt(self, object, target, status=0):
+    @staticmethod
+    def update_jnt(widget, target, status=0):
+        """
+        Update selected joint to use for base reference when snapping
+
+        :param widget: QWidget
+        :param target: list. reference to instance attribute (transform)
+        :param status: int. status code
+        """
+        # TODO: use enum for status
         if cmds.ls(selection=1):
             jnt_name = cmds.ls(selection=1)[0]
             try:
@@ -112,17 +134,26 @@ class SnapWindow(QtWidgets.QMainWindow):
             except:
                 status = -1
         # update status
-        SnapWindow.update_jnt_status(object, status)
+        SnapWindow.update_jnt_status(widget, status)
 
     @staticmethod
     def set_selected(line_edit):
+        """
+        Set QLineEdit based on scene selection
+        """
         sl = cmds.ls(selection=1)
         if sl:
             line_edit.setText(sl[0])
 
     @staticmethod
-    def update_jnt_status(object, status):
-        style = object.styleSheet()
+    def update_jnt_status(widget, status):
+        """
+        Update widget stylesheet when status updated
+
+        :param widget: QWidget
+        :param status: int. status code
+        """
+        style = widget.styleSheet()
 
         background_pattern = r'background-color\: rgb\(\d+, \d+, \d+\)'
         red = 'background-color: rgb(255, 0, 0)'
@@ -136,11 +167,17 @@ class SnapWindow(QtWidgets.QMainWindow):
         elif status == -1:
             style = re.sub(background_pattern, red, style)
 
-        object.setStyleSheet(style)
+        widget.setStyleSheet(style)
 
     @staticmethod
-    def update_jnt_highlight(object, status):
-        style = object.styleSheet()
+    def update_jnt_highlight(widget, status):
+        """
+        Update widget stylesheet when highlight
+
+        :param widget: QWidget
+        :param status: int. status code
+        """
+        style = widget.styleSheet()
 
         border_pattern = r'border-color\: rgb\(\d+, \d+, \d+\)'
         dark = 'border-color: rgb(20, 20, 20)'
@@ -151,9 +188,12 @@ class SnapWindow(QtWidgets.QMainWindow):
         elif status == 0:
             style = re.sub(border_pattern, dark, style)
 
-        object.setStyleSheet(style)
+        widget.setStyleSheet(style)
 
     def snap(self):
+        """
+        Snap/Match position either for IK mode or FK mode
+        """
         if self.tabWidget.currentIndex() == 0:
             # ik to fk
             ik_handle = self.ui_ik_handle_LineEdit.text()
@@ -188,14 +228,18 @@ class SnapWindow(QtWidgets.QMainWindow):
             )
 
     def clear(self):
+        """
+        Clear out ui element and reset instance attribute
+        :return:
+        """
         # reset class property
         self._root_jnt = list()
         self._mid_jnt = list()
         self._top_jnt = list()
 
         # reset field
-        for object in [self.ui_root_Label, self.ui_mid_Label, self.ui_top_Label]:
-            SnapWindow.update_jnt_status(object, 0)
+        for widget in [self.ui_root_Label, self.ui_mid_Label, self.ui_top_Label]:
+            SnapWindow.update_jnt_status(widget, 0)
 
         self.ui_ik_pole_LineEdit.setText('')
         self.ui_ik_handle_LineEdit.setText('')
@@ -205,6 +249,9 @@ class SnapWindow(QtWidgets.QMainWindow):
 
 
 def show():
+    """
+    Display main gui
+    """
     window = SnapWindow()
     try:
         window.close()
@@ -216,6 +263,12 @@ def show():
 
 
 def get_target_transform(jnt):
+    """
+    Get joint transformation info
+
+    :param jnt: str. maya scene node
+    :return: list. [transform name, vec3 position, vec3 rotation]
+    """
     return [
         jnt,
         [round(attr, 2) for attr in cmds.xform(jnt, ws=1, q=1, t=1)],
@@ -224,7 +277,16 @@ def get_target_transform(jnt):
 
 
 def snap_ik_to_fk(ik_handle, pole_vector, root_pos, mid_pos, top_pos, top_rot):
-    """ Snap IK controls based on FK joint"""
+    """
+    Snap IK controls based on FK joints
+
+    :param ik_handle: str. IK handle name
+    :param pole_vector: str. IK pole vector name
+    :param root_pos: list. FK joint root position
+    :param mid_pos: list. FK joint mid position
+    :param top_pos: list. FK joint top position
+    :param top_rot: int. FK joint top rotation
+    """
     # build vectors
     fk_root_vec = om.MVector(root_pos[0], root_pos[1], root_pos[2])
     fk_mid_vec = om.MVector(mid_pos[0], mid_pos[1], mid_pos[2])
@@ -251,7 +313,14 @@ def snap_ik_to_fk(ik_handle, pole_vector, root_pos, mid_pos, top_pos, top_rot):
 
 
 def snap_fk_to_ik(fk_ctrls, root_rot, mid_rot, top_rot):
-    """ Snap FK joint to IK joint"""
+    """
+    Snap FK controls based on IK joints
+
+    :param fk_ctrls: list. three-segment fk controllers
+    :param root_rot: int. ik joint root rotation value
+    :param mid_rot: int. ik joint mid rotation value
+    :param top_rot: int. ik joint top rotation value
+    """
     cmds.xform(fk_ctrls[0], ro=root_rot, ws=1)
     cmds.xform(fk_ctrls[1], ro=mid_rot, ws=1)
     cmds.xform(fk_ctrls[2], ro=top_rot, ws=1)
