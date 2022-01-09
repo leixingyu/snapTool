@@ -47,13 +47,13 @@ class SnapWindow(QtWidgets.QMainWindow):
         Override: define mouse hover, click behavior on certain ui elements
         """
         # hover effect
-        if event.dtype() == QtCore.QEvent.Enter:
+        if event.type() == QtCore.QEvent.Enter:
             SnapWindow.update_jnt_highlight(widget, 1)
-        elif event.dtype() == QtCore.QEvent.Leave:
+        elif event.type() == QtCore.QEvent.Leave:
             SnapWindow.update_jnt_highlight(widget, 0)
 
         # mouse click effect
-        if event.dtype() == QtCore.QEvent.MouseButtonPress:
+        if event.type() == QtCore.QEvent.MouseButtonPress:
             if event.button() == QtCore.Qt.LeftButton:
                 self.open_menu(widget)
             elif event.button() == QtCore.Qt.RightButton:
