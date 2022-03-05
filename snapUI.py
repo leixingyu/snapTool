@@ -2,15 +2,17 @@ import re
 import os
 
 import maya.cmds as cmds
-import maya.OpenMaya as om
 
 from Qt import QtCore, QtGui, QtWidgets
 from Qt import _loadUi
 
+from utility.rigging import matrix
+from . import util
+
 
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
-UI_PATH = r'ui/snap.ui'
-PNG_PATH = r'ui/snap.png'
+UI_PATH = os.path.join('ui', 'snap.ui')
+PNG_PATH = os.path.join('ui', 'snap.png')
 
 
 class SnapWindow(QtWidgets.QMainWindow):
@@ -30,9 +32,9 @@ class SnapWindow(QtWidgets.QMainWindow):
         self.ui_top_Label.installEventFilter(self)
 
         # initialize instance attribute
-        self._root_jnt = list()
-        self._mid_jnt = list()
-        self._top_jnt = list()
+        self._root_jnt_mat = None
+        self._mid_jnt_mat = None
+        self._top_jnt_mat = None
 
         # initialize ui property
         pixmap = QtGui.QPixmap()
@@ -41,51 +43,6 @@ class SnapWindow(QtWidgets.QMainWindow):
 
         # initialize methods
         self.connect_signals()
-
-    def eventFilter(self, widget, event):
-        """
-        Override: define mouse hover, click behavior on certain ui elements
-        """
-        # hover effect
-        if event.type() == QtCore.QEvent.Enter:
-            SnapWindow.update_jnt_highlight(widget, 1)
-        elif event.type() == QtCore.QEvent.Leave:
-            SnapWindow.update_jnt_highlight(widget, 0)
-
-        # mouse click effect
-        if event.type() == QtCore.QEvent.MouseButtonPress:
-            if event.button() == QtCore.Qt.LeftButton:
-                self.open_menu(widget)
-            elif event.button() == QtCore.Qt.RightButton:
-                print("Right Button Clicked")
-
-        return False
-
-    def open_menu(self, widget, target=None):
-        """
-        Create context menu on certain ui elements
-        """
-        if widget is self.ui_root_Label:
-            target = self._root_jnt
-        elif widget is self.ui_mid_Label:
-            target = self._mid_jnt
-        elif widget is self.ui_top_Label:
-            target = self._top_jnt
-
-        menu = QtWidgets.QMenu()
-        # menu option
-        title = QtWidgets.QLabel(str(target))
-        title_action = QtWidgets.QWidgetAction(title)
-        title_action.setDefaultWidget(title)
-        menu.addAction(title_action)
-        menu.addSeparator()
-
-        action = menu.addAction('Assign selected')
-        action.triggered.connect(
-            lambda: self.update_jnt(widget, target))
-
-        cursor = QtGui.QCursor()
-        menu.exec_(cursor.pos())
 
     def connect_signals(self):
         """
@@ -111,10 +68,54 @@ class SnapWindow(QtWidgets.QMainWindow):
             self.ui_fk_ctrl_top_LineEdit,
         ]
         for index in range(len(line_edits)):
-            # TODO: use partial
             push_buttons[index].clicked.connect(
                 lambda _='', l=line_edits[index]: SnapWindow.set_selected(l)
             )
+
+    def eventFilter(self, widget, event):
+        """
+        Override: define mouse hover, click behavior on certain ui elements
+        """
+        # hover effect
+        if event.type() == QtCore.QEvent.Enter:
+            SnapWindow.update_jnt_highlight(widget, 1)
+        elif event.type() == QtCore.QEvent.Leave:
+            SnapWindow.update_jnt_highlight(widget, 0)
+
+        # mouse click effect
+        if event.type() == QtCore.QEvent.MouseButtonPress:
+            if event.button() == QtCore.Qt.LeftButton:
+                self.open_menu(widget)
+            elif event.button() == QtCore.Qt.RightButton:
+                print("Right Button Clicked")
+
+        return False
+
+    def open_menu(self, widget, target=None):
+        """
+        Create context menu on certain ui elements
+        """
+        if widget is self.ui_root_Label:
+            target = self._root_jnt_mat
+        elif widget is self.ui_mid_Label:
+            target = self._mid_jnt_mat
+        elif widget is self.ui_top_Label:
+            target = self._top_jnt_mat
+
+        menu = QtWidgets.QMenu()
+        # menu option
+        title = QtWidgets.QLabel(str(target))
+        title_action = QtWidgets.QWidgetAction(title)
+        title_action.setDefaultWidget(title)
+        menu.addAction(title_action)
+        menu.addSeparator()
+
+        action = menu.addAction('Assign selected')
+        action.triggered.connect(
+            lambda: self.update_jnt(widget, target))
+
+        cursor = QtGui.QCursor()
+        menu.exec_(cursor.pos())
 
     @staticmethod
     def update_jnt(widget, target, status=0):
@@ -129,7 +130,7 @@ class SnapWindow(QtWidgets.QMainWindow):
         if cmds.ls(selection=1):
             jnt_name = cmds.ls(selection=1)[0]
             try:
-                target[:] = get_target_transform(jnt_name)
+                target[:] = matrix.get_matrix(jnt_name)
                 status = 1
             except:
                 status = -1
@@ -202,7 +203,7 @@ class SnapWindow(QtWidgets.QMainWindow):
             if '' in [ik_handle, pole_vector]:
                 return
 
-            snap_ik_to_fk(
+            util.snap_ik_to_fk(
                 ik_handle,
                 pole_vector,
                 self._root_jnt[1],
@@ -220,7 +221,7 @@ class SnapWindow(QtWidgets.QMainWindow):
             if '' in [fk_root, fk_mid, fk_top]:
                 return
 
-            snap_fk_to_ik(
+            util.snap_fk_to_ik(
                 [fk_root, fk_mid, fk_top],
                 self._root_jnt[2],
                 self._mid_jnt[2],
@@ -230,7 +231,6 @@ class SnapWindow(QtWidgets.QMainWindow):
     def clear(self):
         """
         Clear out ui element and reset instance attribute
-        :return:
         """
         # reset class property
         self._root_jnt = list()
@@ -249,78 +249,10 @@ class SnapWindow(QtWidgets.QMainWindow):
 
 
 def show():
-    """
-    Display main gui
-    """
+    if cmds.window('SnapWindow', q=1, exists=1):
+        cmds.deleteUI('SnapWindow')
+
+    global window
     window = SnapWindow()
-    try:
-        window.close()
-    except:
-        pass
-    window.setAttribute(QtCore.Qt.WA_DeleteOnClose)
     window.show()
     return window
-
-
-def get_target_transform(jnt):
-    """
-    Get joint transformation info
-
-    :param jnt: str. maya scene node
-    :return: list. [transform name, vec3 position, vec3 rotation]
-    """
-    return [
-        jnt,
-        [round(attr, 2) for attr in cmds.xform(jnt, ws=1, q=1, t=1)],
-        [round(attr, 2) for attr in cmds.xform(jnt, ws=1, q=1, ro=1)]
-    ]
-
-
-def snap_ik_to_fk(ik_handle, pole_vector, root_pos, mid_pos, top_pos, top_rot):
-    """
-    Snap IK controls based on FK joints
-
-    :param ik_handle: str. IK handle name
-    :param pole_vector: str. IK pole vector name
-    :param root_pos: list. FK joint root position
-    :param mid_pos: list. FK joint mid position
-    :param top_pos: list. FK joint top position
-    :param top_rot: int. FK joint top rotation
-    """
-    # build vectors
-    fk_root_vec = om.MVector(root_pos[0], root_pos[1], root_pos[2])
-    fk_mid_vec = om.MVector(mid_pos[0], mid_pos[1], mid_pos[2])
-    fk_top_vec = om.MVector(top_pos[0], top_pos[1], top_pos[2])
-
-    mid_point_vec = (fk_root_vec + fk_top_vec) / 2
-    pole_dir = fk_mid_vec - mid_point_vec
-    pole_pos = fk_mid_vec + pole_dir
-
-    # get ik ctrl transform
-    pv_ctrl_pos = cmds.xform(pole_vector, ws=1, q=1, sp=1)
-
-    # move ik ctrls
-    cmds.move(
-        pole_pos[0]-pv_ctrl_pos[0],
-        pole_pos[1]-pv_ctrl_pos[1],
-        pole_pos[2]-pv_ctrl_pos[2],
-        pole_vector,
-        relative=1
-    )
-
-    cmds.move(top_pos[0], top_pos[1], top_pos[2], ik_handle)
-    cmds.xform(ik_handle, ro=top_rot, ws=1)
-
-
-def snap_fk_to_ik(fk_ctrls, root_rot, mid_rot, top_rot):
-    """
-    Snap FK controls based on IK joints
-
-    :param fk_ctrls: list. three-segment fk controllers
-    :param root_rot: int. ik joint root rotation value
-    :param mid_rot: int. ik joint mid rotation value
-    :param top_rot: int. ik joint top rotation value
-    """
-    cmds.xform(fk_ctrls[0], ro=root_rot, ws=1)
-    cmds.xform(fk_ctrls[1], ro=mid_rot, ws=1)
-    cmds.xform(fk_ctrls[2], ro=top_rot, ws=1)
