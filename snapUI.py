@@ -1,3 +1,4 @@
+import logging
 import re
 import os
 
@@ -14,6 +15,8 @@ CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
 UI_PATH = os.path.join('ui', 'snap.ui')
 PNG_PATH = os.path.join('ui', 'snap.png')
 
+
+# TODO: use enum for status
 
 class SnapWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -35,6 +38,10 @@ class SnapWindow(QtWidgets.QMainWindow):
         self._root_jnt_mat = None
         self._mid_jnt_mat = None
         self._top_jnt_mat = None
+
+        self._root_jnt = ''
+        self._mid_jnt = ''
+        self._top_jnt = ''
 
         # initialize ui property
         pixmap = QtGui.QPixmap()
@@ -86,54 +93,48 @@ class SnapWindow(QtWidgets.QMainWindow):
         if event.type() == QtCore.QEvent.MouseButtonPress:
             if event.button() == QtCore.Qt.LeftButton:
                 self.open_menu(widget)
-            elif event.button() == QtCore.Qt.RightButton:
-                print("Right Button Clicked")
 
         return False
 
-    def open_menu(self, widget, target=None):
+    def open_menu(self, widget):
         """
         Create context menu on certain ui elements
         """
-        if widget is self.ui_root_Label:
-            target = self._root_jnt_mat
-        elif widget is self.ui_mid_Label:
-            target = self._mid_jnt_mat
-        elif widget is self.ui_top_Label:
-            target = self._top_jnt_mat
-
         menu = QtWidgets.QMenu()
-        # menu option
-        title = QtWidgets.QLabel(str(target))
-        title_action = QtWidgets.QWidgetAction(title)
-        title_action.setDefaultWidget(title)
-        menu.addAction(title_action)
-        menu.addSeparator()
-
         action = menu.addAction('Assign selected')
         action.triggered.connect(
-            lambda: self.update_jnt(widget, target))
+            lambda: self.update_jnt(widget))
 
         cursor = QtGui.QCursor()
         menu.exec_(cursor.pos())
 
-    @staticmethod
-    def update_jnt(widget, target, status=0):
+    def update_jnt(self, widget):
         """
         Update selected joint to use for base reference when snapping
 
-        :param widget: QWidget
-        :param target: list. reference to instance attribute (transform)
-        :param status: int. status code
+        :param widget: QWidget. selected UI element
         """
-        # TODO: use enum for status
-        if cmds.ls(selection=1):
-            jnt_name = cmds.ls(selection=1)[0]
-            try:
-                target[:] = matrix.get_matrix(jnt_name)
-                status = 1
-            except:
-                status = -1
+        if not cmds.ls(selection=1):
+            return
+
+        jnt_name = cmds.ls(selection=1)[0]
+        try:
+            jnt_mat = matrix.get_matrix(jnt_name)
+            if widget is self.ui_root_Label:
+                self._root_jnt_mat = jnt_mat
+                self._root_jnt = jnt_name
+            elif widget is self.ui_mid_Label:
+                self._mid_jnt_mat = jnt_mat
+                self._mid_jnt = jnt_name
+            elif widget is self.ui_top_Label:
+                self._top_jnt_mat = jnt_mat
+                self._top_jnt = jnt_name
+            status = 1
+
+        except Exception as e:
+            logging.error(e)
+            status = -1
+
         # update status
         SnapWindow.update_jnt_status(widget, status)
 
@@ -203,13 +204,13 @@ class SnapWindow(QtWidgets.QMainWindow):
             if '' in [ik_handle, pole_vector]:
                 return
 
-            util.snap_ik_to_fk(
-                ik_handle,
-                pole_vector,
-                self._root_jnt[1],
-                self._mid_jnt[1],
-                self._top_jnt[1],
-                self._top_jnt[2]
+            util.ik_matching(
+                jnt_root_mat=self._root_jnt_mat,
+                jnt_mid_mat=self._mid_jnt_mat,
+                jnt_top_mat=self._top_jnt_mat,
+                jnt_top=self._top_jnt,
+                ik_pole=pole_vector,
+                ik_handle=ik_handle
             )
 
         else:
@@ -221,11 +222,16 @@ class SnapWindow(QtWidgets.QMainWindow):
             if '' in [fk_root, fk_mid, fk_top]:
                 return
 
-            util.snap_fk_to_ik(
-                [fk_root, fk_mid, fk_top],
-                self._root_jnt[2],
-                self._mid_jnt[2],
-                self._top_jnt[2],
+            util.fk_matching(
+                jnt_root_mat=self._root_jnt_mat,
+                jnt_mid_mat=self._mid_jnt_mat,
+                jnt_top_mat=self._top_jnt_mat,
+                jnt_root=self._root_jnt,
+                jnt_mid=self._mid_jnt,
+                jnt_top=self._top_jnt,
+                fk_root=fk_root,
+                fk_mid=fk_mid,
+                fk_top=fk_top
             )
 
     def clear(self):

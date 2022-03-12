@@ -65,10 +65,10 @@ def ik_matching(
     jnt_top_pos = matrix.decompose_translation(om.MTransformationMatrix(jnt_top_mat))
     ik_pole_pos = get_pole_target_pos(jnt_root_pos, jnt_mid_pos, jnt_top_pos)
 
-    snap_ctrl_to_target(ik_handle, ik_handle_pos)
+    snap_ctrl_to_target(ik_handle, ik_handle_pos.as_list())
     rotate_ctrl_to_target(ik_handle, ik_handle_rot)
 
-    snap_ctrl_to_target(ik_pole, ik_pole_pos)
+    snap_pole_to_target(ik_pole, ik_pole_pos.as_list())
 
 
 def get_ctrl_target_pos(jnt_target_mat, jnt, ctrl):
@@ -83,7 +83,7 @@ def get_ctrl_target_pos(jnt_target_mat, jnt, ctrl):
     :param ctrl: str. current ctrl name
     :return: list. positions
     """
-    jnt_target_pos = matrix.decompose_translation(jnt_target_mat)
+    jnt_target_pos = matrix.decompose_translation(om.MTransformationMatrix(jnt_target_mat))
 
     jnt_pos = Vector3(cmds.xform(jnt, ws=1, q=1, t=1))
     ik_pos = Vector3(cmds.xform(ctrl, ws=1, q=1, t=1))
@@ -127,14 +127,19 @@ def get_pole_target_pos(root_pos, mid_pos, top_pos):
     :param root_pos: list. FK joint root position
     :param mid_pos: list. FK joint mid position
     :param top_pos: list. FK joint top position
+    :return
     """
-    fk_root_vec = om.MVector(root_pos[0], root_pos[1], root_pos[2])
-    fk_mid_vec = om.MVector(mid_pos[0], mid_pos[1], mid_pos[2])
-    fk_top_vec = om.MVector(top_pos[0], top_pos[1], top_pos[2])
+    fk_root_vec = Vector3(root_pos[0], root_pos[1], root_pos[2])
+    fk_mid_vec = Vector3(mid_pos[0], mid_pos[1], mid_pos[2])
+    fk_top_vec = Vector3(top_pos[0], top_pos[1], top_pos[2])
+
+    print fk_root_vec, fk_mid_vec, fk_top_vec
 
     mid_point_vec = (fk_root_vec + fk_top_vec) / 2
     pole_dir = fk_mid_vec - mid_point_vec
-    pole_pos = fk_mid_vec + pole_dir
+    pole_pos = fk_mid_vec + (pole_dir * 1)  # multiplier
+
+    print mid_point_vec, pole_dir, pole_pos
 
     return pole_pos
 
@@ -150,10 +155,20 @@ def rotate_ctrl_to_target(ctrl, target_rot):
     cmds.xform(ctrl, ro=target_rot, ws=1)
 
 
-def snap_ctrl_to_target(ctrl, target):
+def snap_ctrl_to_target(ctrl, target_pos):
     """
     Snap controller to target position (in world space)
 
+    :param ctrl:
+    :param target_pos:
+    :return:
+    """
+    cmds.xform(ctrl, t=target_pos, ws=1)
+
+
+def snap_pole_to_target(ctrl, target):
+    """
+    Snap controller to target position (in world space)
     :param ctrl:
     :param target:
     :return:
@@ -169,3 +184,4 @@ def snap_ctrl_to_target(ctrl, target):
         ctrl,
         relative=1
     )
+
