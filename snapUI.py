@@ -3,6 +3,7 @@ import re
 import os
 
 import maya.cmds as cmds
+from maya.api import OpenMaya as om
 
 from Qt import QtCore, QtGui, QtWidgets
 from Qt import _loadUi
@@ -100,13 +101,50 @@ class SnapWindow(QtWidgets.QMainWindow):
         """
         Create context menu on certain ui elements
         """
+        jnt_info = self.get_jnt_info(widget)
+
         menu = QtWidgets.QMenu()
+        title = QtWidgets.QLabel(jnt_info)
+        title_action = QtWidgets.QWidgetAction(title)
+        title_action.setDefaultWidget(title)
+        menu.addAction(title_action)
+        menu.addSeparator()
         action = menu.addAction('Assign selected')
         action.triggered.connect(
             lambda: self.update_jnt(widget))
 
         cursor = QtGui.QCursor()
         menu.exec_(cursor.pos())
+
+    def get_jnt_info(self, widget):
+        """
+        Get joint info snapshot of the current joint
+        used to display and debug joint target information
+
+        :param widget: QWidget. selected UI element
+        :return: str. joint info to display
+        """
+        jnt_mat = None
+        jnt_name = ''
+
+        if widget is self.ui_root_Label:
+            jnt_mat = self._root_jnt_mat
+            jnt_name = self._root_jnt
+        elif widget is self.ui_mid_Label:
+            jnt_mat = self._mid_jnt_mat
+            jnt_name = self._mid_jnt
+        elif widget is self.ui_top_Label:
+            jnt_mat = self._top_jnt_mat
+            jnt_name = self._top_jnt
+
+        try:
+            jnt_pos = matrix.decompose_translation(om.MTransformationMatrix(jnt_mat))
+            jnt_rot = matrix.decompose_rotation(om.MTransformationMatrix(jnt_mat))
+        except:
+            jnt_pos = 'void'
+            jnt_rot = 'void'
+
+        return '{}\n{}\n{}\n'.format(jnt_name, jnt_pos, jnt_rot)
 
     def update_jnt(self, widget):
         """

@@ -127,19 +127,15 @@ def get_pole_target_pos(root_pos, mid_pos, top_pos):
     :param root_pos: list. FK joint root position
     :param mid_pos: list. FK joint mid position
     :param top_pos: list. FK joint top position
-    :return
+    :return: Vector3. target position in world space
     """
     fk_root_vec = Vector3(root_pos[0], root_pos[1], root_pos[2])
     fk_mid_vec = Vector3(mid_pos[0], mid_pos[1], mid_pos[2])
     fk_top_vec = Vector3(top_pos[0], top_pos[1], top_pos[2])
 
-    print fk_root_vec, fk_mid_vec, fk_top_vec
-
     mid_point_vec = (fk_root_vec + fk_top_vec) / 2
     pole_dir = fk_mid_vec - mid_point_vec
     pole_pos = fk_mid_vec + (pole_dir * 1)  # multiplier
-
-    print mid_point_vec, pole_dir, pole_pos
 
     return pole_pos
 
@@ -148,9 +144,8 @@ def rotate_ctrl_to_target(ctrl, target_rot):
     """
     Rotate controller to target rotation (in world space)
 
-    :param ctrl:
-    :param target_rot:
-    :return:
+    :param ctrl: str. ctrl name
+    :param target_rot: list. target rotation in world space
     """
     cmds.xform(ctrl, ro=target_rot, ws=1)
 
@@ -159,29 +154,27 @@ def snap_ctrl_to_target(ctrl, target_pos):
     """
     Snap controller to target position (in world space)
 
-    :param ctrl:
-    :param target_pos:
-    :return:
+    :param ctrl: str. ctrl name
+    :param target_pos: list. target position in world space
     """
     cmds.xform(ctrl, t=target_pos, ws=1)
 
 
-def snap_pole_to_target(ctrl, target):
+def snap_pole_to_target(ctrl, target_pos):
     """
-    Snap controller to target position (in world space)
-    :param ctrl:
-    :param target:
-    :return:
+    Snap pole control to target position (in world space)
+
+    :param ctrl: str. pole control name
+    :param target_pos: target position in world space
     """
     # get ik ctrl transform
     ctrl_pos = cmds.xform(ctrl, ws=1, q=1, sp=1)
 
     # move ik ctrls
     cmds.move(
-        target[0]-ctrl_pos[0],
-        target[1]-ctrl_pos[1],
-        target[2]-ctrl_pos[2],
+        target_pos[0]-ctrl_pos[0],
+        target_pos[1]-ctrl_pos[1],
+        target_pos[2]-ctrl_pos[2],
         ctrl,
         relative=1
     )
-
