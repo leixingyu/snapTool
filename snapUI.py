@@ -1,5 +1,4 @@
 import logging
-import re
 import os
 
 import maya.cmds as cmds
@@ -8,8 +7,9 @@ from maya.api import OpenMaya as om
 from Qt import QtCore, QtGui, QtWidgets
 from Qt import _loadUi
 
-from utility.rigging import matrix
 from . import util
+from . import hoverBtn
+from .utility.rigging import matrix
 
 
 CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -27,13 +27,15 @@ class SnapWindow(QtWidgets.QMainWindow):
         super(SnapWindow, self).__init__()
         _loadUi(os.path.join(CURRENT_PATH, UI_PATH), self)
 
-        # set flag
-        self.setWindowFlags(QtCore.Qt.Window)
-        self.setMouseTracking(1)
+        # custom ui element
+        self.ui_root_Label = hoverBtn.HoverBtn(parent=self.frame)
+        self.ui_root_Label.setGeometry(105, 51, 50, 50)
 
-        self.ui_root_Label.installEventFilter(self)
-        self.ui_mid_Label.installEventFilter(self)
-        self.ui_top_Label.installEventFilter(self)
+        self.ui_mid_Label = hoverBtn.HoverBtn(parent=self.frame)
+        self.ui_mid_Label.setGeometry(177, 134, 50, 50)
+
+        self.ui_top_Label = hoverBtn.HoverBtn(parent=self.frame)
+        self.ui_top_Label.setGeometry(290, 56, 50, 50)
 
         # initialize instance attribute
         self._root_jnt_mat = None
@@ -80,22 +82,9 @@ class SnapWindow(QtWidgets.QMainWindow):
                 lambda _='', l=line_edits[index]: SnapWindow.set_selected(l)
             )
 
-    def eventFilter(self, widget, event):
-        """
-        Override: define mouse hover, click behavior on certain ui elements
-        """
-        # hover effect
-        if event.type() == QtCore.QEvent.Enter:
-            SnapWindow.update_jnt_highlight(widget, 1)
-        elif event.type() == QtCore.QEvent.Leave:
-            SnapWindow.update_jnt_highlight(widget, 0)
-
-        # mouse click effect
-        if event.type() == QtCore.QEvent.MouseButtonPress:
-            if event.button() == QtCore.Qt.LeftButton:
-                self.open_menu(widget)
-
-        return False
+        self.ui_root_Label.clicked.connect(self.open_menu)
+        self.ui_mid_Label.clicked.connect(self.open_menu)
+        self.ui_top_Label.clicked.connect(self.open_menu)
 
     def open_menu(self, widget):
         """
@@ -109,9 +98,11 @@ class SnapWindow(QtWidgets.QMainWindow):
         title_action.setDefaultWidget(title)
         menu.addAction(title_action)
         menu.addSeparator()
+
         action = menu.addAction('Assign selected')
         action.triggered.connect(
-            lambda: self.update_jnt(widget))
+            lambda: self.assign_jnt(widget)
+        )
 
         cursor = QtGui.QCursor()
         menu.exec_(cursor.pos())
@@ -146,7 +137,7 @@ class SnapWindow(QtWidgets.QMainWindow):
 
         return '{}\n{}\n{}\n'.format(jnt_name, jnt_pos, jnt_rot)
 
-    def update_jnt(self, widget):
+    def assign_jnt(self, widget):
         """
         Update selected joint to use for base reference when snapping
 
@@ -173,8 +164,8 @@ class SnapWindow(QtWidgets.QMainWindow):
             logging.error(e)
             status = -1
 
-        # update status
-        SnapWindow.update_jnt_status(widget, status)
+        # update ui status
+        widget.set_color(status)
 
     @staticmethod
     def set_selected(line_edit):
@@ -184,51 +175,6 @@ class SnapWindow(QtWidgets.QMainWindow):
         sl = cmds.ls(selection=1)
         if sl:
             line_edit.setText(sl[0])
-
-    @staticmethod
-    def update_jnt_status(widget, status):
-        """
-        Update widget stylesheet when status updated
-
-        :param widget: QWidget
-        :param status: int. status code
-        """
-        style = widget.styleSheet()
-
-        background_pattern = r'background-color\: rgb\(\d+, \d+, \d+\)'
-        red = 'background-color: rgb(255, 0, 0)'
-        green = 'background-color: rgb(0, 255, 0)'
-        null = 'background-color: rgb(170, 170, 170)'
-
-        if status == 1:
-            style = re.sub(background_pattern, green, style)
-        elif status == 0:
-            style = re.sub(background_pattern, null, style)
-        elif status == -1:
-            style = re.sub(background_pattern, red, style)
-
-        widget.setStyleSheet(style)
-
-    @staticmethod
-    def update_jnt_highlight(widget, status):
-        """
-        Update widget stylesheet when highlight
-
-        :param widget: QWidget
-        :param status: int. status code
-        """
-        style = widget.styleSheet()
-
-        border_pattern = r'border-color\: rgb\(\d+, \d+, \d+\)'
-        dark = 'border-color: rgb(20, 20, 20)'
-        light = 'border-color: rgb(21, 255, 9)'
-
-        if status == 1:
-            style = re.sub(border_pattern, light, style)
-        elif status == 0:
-            style = re.sub(border_pattern, dark, style)
-
-        widget.setStyleSheet(style)
 
     def snap(self):
         """

@@ -1,8 +1,8 @@
 import maya.cmds as cmds
 from maya.api import OpenMaya as om
 
-from utility.rigging import matrix
-from utility.datatype.vector import Vector3
+from .utility.rigging import matrix
+from .utility.datatype.vector import Vector3
 
 
 def fk_matching(
@@ -28,7 +28,6 @@ def fk_matching(
     :param fk_root: str. fk root controller name
     :param fk_mid: str. fk mid controller name
     :param fk_top: str. fk top controller name
-    :return:
     """
     fk_root_rot = get_ctrl_target_rot(jnt_root_mat, jnt_root, fk_root)
     fk_mid_rot = get_ctrl_target_rot(jnt_mid_mat, jnt_mid, fk_mid)
