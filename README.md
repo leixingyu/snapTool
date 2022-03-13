@@ -41,8 +41,8 @@ or a custom directory under `PYTHONPATH` env variable.
 
 3. Launch through script editor:
     ```python
-    from snapTool import snap
-    snap.show()
+    from snapTool import snapUI
+    snapUI.show()
     ```
 
 ## Usage
