@@ -4,7 +4,7 @@ import os
 import maya.cmds as cmds
 from maya.api import OpenMaya as om
 
-from Qt import QtCore, QtGui, QtWidgets
+from Qt import QtGui, QtWidgets, QtCore
 from Qt import _loadUi
 
 from . import util
@@ -93,10 +93,8 @@ class SnapWindow(QtWidgets.QMainWindow):
         jnt_info = self.get_jnt_info(widget)
 
         menu = QtWidgets.QMenu()
-        title = QtWidgets.QLabel(jnt_info)
-        title_action = QtWidgets.QWidgetAction(title)
-        title_action.setDefaultWidget(title)
-        menu.addAction(title_action)
+        title = menu.addAction(jnt_info)
+        title.setEnabled(False)
         menu.addSeparator()
 
         action = menu.addAction('Assign selected')
@@ -239,10 +237,10 @@ class SnapWindow(QtWidgets.QMainWindow):
 
 
 def show():
-    if cmds.window('SnapWindow', q=1, exists=1):
-        cmds.deleteUI('SnapWindow')
-
-    global window
     window = SnapWindow()
+    try:
+        window.close()
+    except:
+        pass
+    window.setAttribute(QtCore.Qt.WA_DeleteOnClose)
     window.show()
-    return window
