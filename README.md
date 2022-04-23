@@ -33,13 +33,11 @@ different across rig types.
 
 ## Getting Started
 
-1. Unzip the **snap-tool** package under
+1. Unzip the [snapTool.zip](https://github.com/leixingyu/snapTool/releases/tag/v1.0.0) package under
 `%USERPROFILE%/Documents/maya/[current maya version]/scripts/`
 or a custom directory under `PYTHONPATH` env variable. 
 
-2. Rename the package to something like `snapTool`
-
-3. Launch through script editor:
+2. Launch through script editor:
     ```python
     from snapTool import snapUI
     snapUI.show()
